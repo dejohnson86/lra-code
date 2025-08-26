@@ -38,7 +38,6 @@ def kMHU(n):
 		W=randint(2,M-2)
 	a=vector(a)
 	pk=W*a%M
-	##return(pk)
 	
 	return(pk,a,W,M)	
 	
@@ -99,33 +98,6 @@ def eqsmMerk(L1,L2,lr):
 		else:
 			fineq[L2[i%2]]-=g0123[i]
 	return(fineq)
-
-########
-## LRA-MHU Single Execution using d coefficients of the public key pk; 5 <= d <= len(pk)
-##
-
-def LRAMHU(pk,d):
-	timestart=time.time()
-	pkn=pk[:d]
-	D=DmatrixMH(pkn)
-	L=D.LLL()
-	K=L[:L.nrows()-1].right_kernel().matrix()
-	E=K.echelon_form()
-	rtv=E.solve_left(pkn)
-	r2=rtv[0]
-	t2=abs(rtv[1])
-	ind=0
-	g=xgcd(r2,t2)
-	h2=g[1]
-	va=h2*pk%t2
-	
-	timefinish=time.time()-timestart
-	
-	successSum=(sum(va)<t2)
-	successSIS=SIS(va)
-	success=(successSIS and successSum)
-	return(success,timefinish)	
-			
 	
 ####################
 ## LRA versus Shuffled Merkle-Hellman 
@@ -134,7 +106,7 @@ def LRAMHU(pk,d):
 # Works on -unshuffled- MH public keys with n coefficients and discriminator matrix degree d; unshuffled keys are used for simplicity 
 # of presentation and study, but the algorithm uses completely random internal coefficient selection so that this has no effect
 # upon its success or failure
-def LRAMHS(pk,d):
+def LRAMHS(pk,d,retval):
 	pkT=copy(pk)
 	timestart=time.time()
 	FailVal=True
@@ -160,8 +132,11 @@ def LRAMHS(pk,d):
 			vaI=hh2*vector(pkLL)%tt2
 	
 	timenext=time.time()-timestart
-	A=PTest(pkLL,pk,6)
-	return(A[0]+timenext,A[1],A[2]+ctrR2)
+	A=PTest(pkLL,pk,6,retval)
+	if retval:
+		return(A[0]+timenext,A[1],A[2]+ctrR2,A[3])
+	else:	
+		return(A[0]+timenext,A[1],A[2]+ctrR2)
 
 
 # Internal LRA algorithm, executed multiple times
@@ -187,8 +162,8 @@ def LRAInter(pk,d):
 	return(h2,t2,KM,pkn)
 
 # Final reduction of the public key using a maximum of 6 permutations of final 6 key components, one
-# for each distinct possible first coefficient
-def PTest(pk,pkf,d):
+# for each distinct possible first coefficient. Set 'retval' true to return the equivalent secret key
+def PTest(pk,pkf,d,retval):
 	timestart=time.time()
 	P=[[0,1,2,3,4,5],[1,2,3,4,5,0],[2,3,4,5,0,1],[3,4,5,0,1,2],[4,5,0,1,2,3],[5,0,1,2,3,4]]
 	ctr=0
@@ -203,9 +178,12 @@ def PTest(pk,pkf,d):
 		SUMFd=(0<sum(FAX)<tt2)
 		if SUMFd and SISFd:
 			timefinish=time.time()-timestart
-			return(timefinish,True,ctr)
+			if retval:
+				return(timefinish,True,ctr,[FAX,hh2,tt2])
+			else:
+				return(timefinish,True,ctr)
 	timefinish=time.time()-timestart
-	return(timefinish,False,0)
+	return(timefinish,False,0,[0,0,0])
 
 # Returns a vector of coefficients 'pke' given some specified permutation 'pe'  
 def MPp(pkV,pe):
@@ -241,7 +219,7 @@ def MerkSLRAMass(ntests,n,d):
 	permctr=0
 	for i in range(ntests):
 		pk=kMHU(n)
-		X=LRAMHS(pk[0],d)
+		X=LRAMHS(pk[0],d,False)
 		if X[1]:
 			totsuccess+=1
 			totStime+=X[0]
