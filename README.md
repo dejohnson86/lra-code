@@ -11,15 +11,16 @@ lra-hppk.sage:
 
 lra-mhs.sage: 
     Similarly, you can execute 'k=kMHU(n)' for an -unshuffled- key of length 'n', then run, e.g., 'LRAMHS(k[0],6,True)' to execute LRA-MHS 
-    on the public key, 'k[0]' with discriminator matrix reduction of dimension 6. Choosing 'True' returns the equivalent secret key as final output.
+    on the public key, 'k[0]' with discriminator matrix reduction of dimension 6. Choosing 'True' returns the equivalent secret key as primary output.
     Likewise, 'MerkSLRAMass(ntests,n,d)' will collect data from running 'ntests' on the Shuffled MH PKC of key-length 'n' with discriminator construction
     of dimension 'd'. N.B.: Shuffled keys are -not- presently supported, though our LRA functions use fully random coefficient draws wherever significant. 
     The difference is almost purely in presentation, and we've left it as such for clarity of programming and study; there are only negligible additions to 
     memory and computation upon adding the necessary sorting and book-keeping functions for including the absentee permutation for a full, equivalent 
-    shuffled Merkle-Hellman private key.
+    shuffled Merkle-Hellman private key. You can use the function 'pkeqMH(pk,esk)' to check the effectiveness of a demonstrated equivalent key 'esk' at decrypting
+    a randomly generated ciphertext as encrypted via public (unshuffled) key 'pk'.
 
 lra-mhu.sage: 
-    As with lra-mhs.sage, execute 'k=MHU(n)' and, e.g., 'LRAMHU(k[0],6,True)' for single execution, or 'MerkULRAMass(ntests,n,d)' for mass testing.
+    Generally, as with lra-mhs.sage, execute 'k=kMHU(n)' and, e.g., 'LRAMHU(k[0],6,True)' for single execution, or 'MerkULRAMass(ntests,n,d)' for mass testing.
     
 wlra.sage:
     Everything to do with the Weak Lattice Reconstitution Attack. Once again, you can run 'k=skpkgen()' and then 'WLRA(k[1],True)' to run the WLRA on
