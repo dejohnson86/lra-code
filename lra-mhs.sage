@@ -23,8 +23,41 @@ def SV(vv):
 		va+=[(vv[i],i)]
 	return(sorted(va))	
 
+
+# Decryption of ciphertext 'c' for Merkle-Hellman using equivalent secret key 'esk', 
+# equivalent modular inverse 'ri', equivalent modulus 't'
+def mhdecr(esk,ri,t,c):
+	cr=ri*c%t
+	mi=zero_vector(len(esk))
+	for i in range(len(esk)-1,-1,-1):
+		if (cr>esk[i]):
+			mi[i]=1
+			cr=cr-esk[i]
+	return(mi)	
+
+# Random binary message generation of length 'n'
+def mhmess(n):
+	me=vector(ZZ,[randint(0,1) for i in range(n)])
+	return(me)	
+	
+# Private key equivalence check; input public key 'pk' and equivalent (Unshuffled) secret key 'esk'
+def pkeqMH(pk,esk):
+	mes=mhmess(len(pk))
+	print("A randomly generated plaintext is binary vector:")
+	print(mes)
+	
+	ci=pk*mes
+	print("The corresponding ciphertext is the integer:")
+	print(ci)
+	
+	mesesk=mhdecr(esk[0],esk[1],esk[2],ci)
+	print("The ciphertext as decrypted by the LRA's equivalent key is binary vector:")
+	print(mesesk)
+	print("And the difference between the plaintext recovered with assistance by the LRA and the original is:")
+	print(mesesk-mes)	
+
 ########
-## Unshuffled Merkle-Hellman Public Key Generator
+## Unshuffled Merkle-Hellman Key Generator
 ##
 
 def kMHU(n):
@@ -42,7 +75,7 @@ def kMHU(n):
 	return(pk,a,W,M)	
 	
 ########
-## Shuffled Merkle-Hellman Public Key Generator
+## Shuffled Merkle-Hellman Key Generator
 ##
 
 def kMHS(n):
@@ -66,30 +99,43 @@ def kMHS(n):
 ## Discriminator Matrix Functions for Merkle-Hellman
 ##
 
+# Overall function to compute discriminator matrix; a more efficient implementation
+# that only checks i+1, i+2, and i+3 for any given i in internal loop
 def DmatrixMH(pkL):
 	rl=[]
-	r2=[]
+	D2=[]
 	lr=len(pkL)
-	LY=xgcdListMerk(pkL)
+	LY=xgcdList(pkL)
 	ln=len(LY)
-	for i in range(ln):
-		for j in range(i+1,ln):
+	for i in range(ln-3):
+		for j in range(i+1,i+4):
 			if LY[i][2][0]==LY[j][2][0]:
-				rl+=[eqsmMerk(LY[i],LY[j],lr)]
-	r1=matrix(ZZ,rl)
-	r1=r1.echelon_form()
-	r1=r1[:r1.rank()]
-	return(r1)
+				rl+=[eqsm(LY[i],LY[j],lr)]
+					
+			else:
+				X1=LY[j][2][0]*vector(ZZ,LY[i][2])
+				X2=LY[i][2][0]*vector(ZZ,LY[j][2])
+				L1M=LY[i][:2]+[X1]
+				L2M=LY[j][:2]+[X2]
+				rl+=[eqsm(L1M,L2M,lr)]
+		
+	D=matrix(rl)
+	D=D.echelon_form()
+	D=D[:D.rank()]
+	return(D)
 
-def xgcdListMerk(LP):
+# Computes the Bezout coefficients from either public polynomial with relevant indexing information	
+def xgcdList(LP):
 	coll=[]
 	lr=len(LP)
 	for i in range(lr-1):
 		for j in range(i+1,lr):
 			coll+=[[i,j,xgcd(LP[i],LP[j])]]
 	return(coll)
-
-def eqsmMerk(L1,L2,lr):
+	
+# Using two lists of paired Bezout coefficients derived from public polynomial coefficients, 
+# computes a vector in the set \mathcal{N} to be used in the discriminator matrix.
+def eqsm(L1,L2,lr):
 	fineq=[0 for i in range(lr)]
 	g0123=[L1[2][1],L1[2][2],L2[2][1],L2[2][2]]
 	for i in range(4):
@@ -105,7 +151,8 @@ def eqsmMerk(L1,L2,lr):
 
 # Works on -unshuffled- MH public keys with n coefficients and discriminator matrix degree d; unshuffled keys are used for simplicity 
 # of presentation and study, but the algorithm uses completely random internal coefficient selection so that this has no effect
-# upon its success or failure
+# upon its success or failure. Set parameter 'retval' as 'True' to include the equivalent secret key as first coefficient of final
+# output.
 def LRAMHS(pk,d,retval):
 	pkT=copy(pk)
 	timestart=time.time()
@@ -134,7 +181,7 @@ def LRAMHS(pk,d,retval):
 	timenext=time.time()-timestart
 	A=PTest(pkLL,pk,6,retval)
 	if retval:
-		return(A[0]+timenext,A[1],A[2]+ctrR2,A[3])
+		return(A[3],A[0]+timenext,A[1],A[2]+ctrR2)
 	else:	
 		return(A[0]+timenext,A[1],A[2]+ctrR2)
 
@@ -185,7 +232,7 @@ def PTest(pk,pkf,d,retval):
 	timefinish=time.time()-timestart
 	return(timefinish,False,0,[0,0,0])
 
-# Returns a vector of coefficients 'pke' given some specified permutation 'pe'  
+# Returns a vector permuting coefficients of 'pkV' given some specified permutation 'pe'  
 def MPp(pkV,pe):
 	pke=vector([pkV[i] for i in pe])
 	return(pke)
@@ -201,6 +248,9 @@ def LRAF(pkn):
 	t2=abs(rtv[1])
 	g=xgcd(r2,t2)
 	h2=g[1]
+	if E[0][5]>t2/2:
+		return(-h2,t2)
+	
 	return(h2,t2)
 
 		

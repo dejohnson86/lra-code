@@ -9,28 +9,61 @@ def l2(n):
 	m=log(abs(n),2)
 	return(RR(m))
 
-# Checks if the vector is a super-increasing sequence 
+# Checks if the vector 'vv' is a super-increasing sequence 
 def SIS(vv):
 	for i in range(2,len(vv)):
 		if sum(vv[:i])>=vv[i]:
 			return(False)
 	return(True)
 
+# Checks if the vector 'vv' is a super-increasing sequence past the m-th coefficient	
+def SISm(vv,m):
+	vc=copy(vv)
+	vc=vc[m:]
+	for i in range(2,len(vc)):
+		if sum(vc[:i])>=vc[i]:
+			return(False)
+	return(True)	
 
-def MC(vv,mr):
-	for i in range(len(vv)):
-		vv[i]=Mod(vv[i],mr).lift_centered()
-	return(vv)	
-
-def mhdecr(sv,ri,t,c):
+# Decryption of ciphertext 'c' for Merkle-Hellman using equivalent secret key 'esk', 
+# equivalent modular inverse 'ri', equivalent modulus 't'
+def mhdecr(esk,ri,t,c):
 	cr=ri*c%t
-	mi=zero_vector(len(sv))
-	for i in range(len(sv)-1,-1,-1):
-		if (cr>sv[i]):
+	mi=zero_vector(len(esk))
+	for i in range(len(esk)-1,-1,-1):
+		if (cr>esk[i]):
 			mi[i]=1
-			cr=cr-sv[i]
-	return(mi)		
+			cr=cr-esk[i]
+	return(mi)	
 
+# Random binary message generation of length 'n'
+def mhmess(n):
+	me=vector(ZZ,[randint(0,1) for i in range(n)])
+	return(me)	
+	
+# Private key equivalence check; input public key 'pk' and equivalent secret key 'esk'
+def pkeqMH(pk,esk):
+	mes=mhmess(len(pk))
+	print("A randomly generated plaintext is binary vector:")
+	print(mes)
+	
+	ci=pk*mes
+	print("The corresponding ciphertext is the integer:")
+	print(ci)
+	
+	mesesk=mhdecr(esk[0],esk[1],esk[2],ci)
+	print("The ciphertext as decrypted by the LRA's equivalent key is binary vector:")
+	print(mesesk)
+	print("And the difference between the plaintext recovered with assistance by the LRA and the original is:")
+	print(mesesk-mes)	
+
+# Subtracts a particular value 'va' from every entry of vector 've'
+def valsubvec(ve,va):
+	an=[]
+	for i in ve:
+		an+=[i-va]
+	an=vector(an)
+	return(an)	
 
 #################################################
 ## Unshuffled Merkle-Hellman Key Generator
@@ -55,30 +88,43 @@ def kMHU(n):
 ## Discriminator Matrix Functions for Merkle-Hellman
 ##
 
+# Overall function to compute discriminator matrix; a more efficient implementation
+# that only checks between i+1,i+2, and i+3 for any given i
 def DmatrixMH(pkL):
 	rl=[]
-	r2=[]
+	D2=[]
 	lr=len(pkL)
-	LY=xgcdListMerk(pkL)
+	LY=xgcdList(pkL)
 	ln=len(LY)
-	for i in range(ln):
-		for j in range(i+1,ln):
+	for i in range(ln-3):
+		for j in range(i+1,i+4):
 			if LY[i][2][0]==LY[j][2][0]:
-				rl+=[eqsmMerk(LY[i],LY[j],lr)]
-	r1=matrix(ZZ,rl)
-	r1=r1.echelon_form()
-	r1=r1[:r1.rank()]
-	return(r1)
+				rl+=[eqsm(LY[i],LY[j],lr)]
+					
+			else:
+				X1=LY[j][2][0]*vector(ZZ,LY[i][2])
+				X2=LY[i][2][0]*vector(ZZ,LY[j][2])
+				L1M=LY[i][:2]+[X1]
+				L2M=LY[j][:2]+[X2]
+				rl+=[eqsm(L1M,L2M,lr)]
+		
+	D=matrix(rl)
+	D=D.echelon_form()
+	D=D[:D.rank()]
+	return(D)
 
-def xgcdListMerk(LP):
+# Computes the Bezout coefficients from either public polynomial with relevant indexing information
+def xgcdList(LP):
 	coll=[]
 	lr=len(LP)
 	for i in range(lr-1):
 		for j in range(i+1,lr):
 			coll+=[[i,j,xgcd(LP[i],LP[j])]]
-	return(coll)
+	return(coll)	
 
-def eqsmMerk(L1,L2,lr):
+# Using two lists of paired Bezout coefficients derived from public polynomial coefficients, 
+# computes a vector in the set \mathcal{N} to be used in the discriminator matrix.
+def eqsm(L1,L2,lr):
 	fineq=[0 for i in range(lr)]
 	g0123=[L1[2][1],L1[2][2],L2[2][1],L2[2][2]]
 	for i in range(4):
@@ -92,6 +138,7 @@ def eqsmMerk(L1,L2,lr):
 ## LRA-MHU Single Execution using d coefficients of the public key
 ##
 
+# Set parameter 'retval' as 'True' to include the equivalent secret key as first coefficient of final output
 def LRAMHU(pk,d,retval):
 	timestart=time.time()
 	pkn=pk[:d]
@@ -106,14 +153,18 @@ def LRAMHU(pk,d,retval):
 	g=xgcd(r2,t2)
 	h2=g[1]
 	va=h2*pk%t2
-	
+	negval=1
+	if va[10]>t2/2:
+		negval=-1
+		va=-valsubvec(va[10:],t2)	
+		va=vector([0 for i in range(10)]+list(va))	
 	timefinish=time.time()-timestart
-	
+	successSIS=SISm(va,10)
 	successSum=(0<sum(va)<t2)
-	successSIS=SIS(va)
+	
 	success=(successSIS and successSum)
 	if retval:
-		return([va,h2,t2],success,timefinish)
+		return([va,negval*h2,t2],success,timefinish)
 	else:
 		return(success,timefinish)	
 			
