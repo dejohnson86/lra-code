@@ -6,8 +6,7 @@ For specific running procedures after loading the given files:
 
 lra-hppk.sage: 
     You can generate a private/public HPPK key-pair using, e.g., 'k=skpkgen()' and then run 'LRA(k[1])' to execute LRA-HPPK 
-    on the public key, 'k[1]', observing that the return, as far as tested, invariably contains the elements of 'k[0]' or some small multiples thereof.
-    Whereas, running 'LRAMass(n)' will run the LRA 'n' times and compute averages of various datas.
+    on the public key, 'k[1]', observing that the return contains the elements of 'k[0]' or some small multiples thereof. (This has held true for all tests to date.) Whereas, running 'LRAMass(n)' will run the LRA 'n' times and compute averages of various datas.
 
 lra-mhs.sage: 
     Similarly, you can execute 'k=kMHU(n)' for an -unshuffled- key of length 'n', then run, e.g., 'LRAMHS(k[0],6,True)' to execute LRA-MHS 
